@@ -19,6 +19,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [twinData, setTwinData] = useState<any>(null);
   const [msgCount, setMsgCount] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isAvatarLoading, setIsAvatarLoading] = useState(true);
   const [quickAsk, setQuickAsk] = useState("");
@@ -70,6 +71,7 @@ export default function Dashboard() {
         const sessionsRes = await fetch("/api/sessions", { headers });
         if (sessionsRes.ok) {
           const sessions = await sessionsRes.json();
+          setSessionCount(sessions.length);
           let totalMsgs = 0;
           for (const session of sessions) {
             const msgsRes = await fetch(`/api/sessions/${session.id}/messages`, { headers });
@@ -625,20 +627,28 @@ export default function Dashboard() {
 
             {/* Stats Section */}
             <div id="dashboard-stats" className="grid grid-cols-1 gap-4">
-              <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+              <button
+                type="button"
+                onClick={() => navigate('/chat')}
+                className="w-full p-6 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:bg-white/[0.05] transition-all text-left cursor-pointer"
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <MessageSquare size={20} className="text-primary" />
                   </div>
                   <div>
                     <p className="text-[10px] text-white/40 uppercase font-bold">Conversations</p>
-                    <p className="text-2xl font-bold">{msgCount}</p>
+                    <p className="text-2xl font-bold">{sessionCount}</p>
                   </div>
                 </div>
                 <ChevronRight size={20} className="text-white/10 group-hover:text-white/40 transition-all" />
-              </div>
+              </button>
 
-              <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:bg-white/[0.05] transition-all">
+              <button
+                type="button"
+                onClick={() => navigate('/setup')}
+                className="w-full p-6 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:bg-white/[0.05] transition-all text-left cursor-pointer"
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
                     <Brain size={20} className="text-secondary" />
@@ -649,7 +659,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <ChevronRight size={20} className="text-white/10 group-hover:text-white/40 transition-all" />
-              </div>
+              </button>
 
               <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:bg-white/[0.05] transition-all cursor-pointer relative overflow-hidden" onClick={() => navigate('/insights')}>
                 {!hasKnowledge && (

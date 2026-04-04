@@ -102,8 +102,19 @@ export async function streamLocalChat(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to connect to local AI');
+      const rawError = await response.text();
+      let parsedError: any = null;
+
+      try {
+        parsedError = rawError ? JSON.parse(rawError) : null;
+      } catch {
+        parsedError = null;
+      }
+
+      const errorMessage = parsedError?.error || parsedError?.message || rawError || 'Failed to connect to local AI';
+      const details = parsedError?.details ? ` ${parsedError.details}` : '';
+      const suggestion = parsedError?.suggestion ? ` ${parsedError.suggestion}` : '';
+      throw new Error(`${errorMessage}${details}${suggestion}`.trim());
     }
 
     const reader = response.body?.getReader();

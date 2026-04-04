@@ -246,7 +246,136 @@ export default function Chat() {
 
   const handleApiError = (error: unknown, operation: string) => {
     console.error(`API Error (${operation}):`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const normalizedMessage = errorMessage.toLowerCase();
+
+    if (normalizedMessage.includes("quota") || normalizedMessage.includes("resource_exhausted")) {
+      const retryMatch = errorMessage.match(/retry in\s+([\d.]+s)/i);
+      const retryHint = retryMatch ? ` Try again in about ${retryMatch[1]}.` : "";
+      showToast(`Gemini quota reached.${retryHint}`, "error");
+      return;
+    }
+
+    if (normalizedMessage.includes("not installed")) {
+      showToast(`Selected Ollama model is missing. Run ollama pull ${localAiModel}.`, "error");
+      setShowSetupGuide(true);
+      return;
+    }
+
+    if (normalizedMessage.includes("ollama is not reachable") || normalizedMessage.includes("localhost:11434")) {
+      showToast("Ollama is offline. Start it locally, then try again.", "error");
+      setShowSetupGuide(true);
+      return;
+    }
+
+    if (normalizedMessage.includes("system memory") || normalizedMessage.includes("memory")) {
+      showToast("Selected Ollama model needs more RAM. Trying a smaller model helps.", "error");
+      setShowSetupGuide(true);
+      return;
+    }
+
     showToast(`Error: ${operation} failed.`, "error");
+  };
+
+  const resolveLocalModel = () => {
+    if (availableModels.length === 0) {
+      return localAiModel;
+    }
+
+    const selectedModelExists = availableModels.some((model: any) => model.name === localAiModel);
+    if (selectedModelExists) {
+      return localAiModel;
+    }
+
+    const fallbackModel = availableModels[0].name;
+    setLocalAiModel(fallbackModel);
+    showToast(`Switched to available local model: ${fallbackModel}`, "info");
+    return fallbackModel;
+  };
+
+  const getSmallerLocalModel = (currentModel: string) => {
+    if (availableModels.length === 0) {
+      return null;
+    }
+
+    const sortedModels = [...availableModels]
+      .filter((model: any) => model?.name)
+      .sort((a: any, b: any) => (a.size || Number.MAX_SAFE_INTEGER) - (b.size || Number.MAX_SAFE_INTEGER));
+
+    return sortedModels.find((model: any) => model.name !== currentModel)?.name || null;
+  };
+
+  const saveTwinMessage = async (text: string, moodAtTime: string) => {
+    const aiMsgResponse = await fetch(`/api/sessions/${currentSessionId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("vitra_token")}`
+      },
+      body: JSON.stringify({
+        text,
+        sender: "twin",
+        moodAtTime
+      })
+    });
+
+    if (!aiMsgResponse.ok) throw new Error("Failed to save AI response");
+    const aiMsg = await aiMsgResponse.json();
+    setMessages(prev => [...prev, { ...aiMsg, timestamp: new Date(aiMsg.timestamp) }]);
+  };
+
+  const sendWithLocalAi = async (text: string, preferredModel?: string, attemptedModels: string[] = []) => {
+    const status = await verifyOllama();
+    if (status !== "online") {
+      setOllamaStatus("offline");
+      setShowSetupGuide(true);
+      throw new Error("Ollama is not reachable on localhost:11434");
+    }
+
+    setOllamaStatus("online");
+
+    const modelToUse = preferredModel || resolveLocalModel();
+    const localHistory: LocalChatMessage[] = messages.slice(-10).map(m => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.text
+    }));
+    localHistory.push({ role: "user", content: text });
+
+    const feedbackContext = messages
+      .filter(m => m.sender === "twin" && m.feedback)
+      .map(m => `- Response: "${m.text.slice(0, 50)}..." was rated ${m.feedback}${m.feedbackCategory ? ` (${m.feedbackCategory})` : ""}`)
+      .join("\n");
+
+    try {
+      const localResponse = await streamLocalChat(localHistory, {
+        model: modelToUse,
+        twinProfile,
+        feedbackContext,
+        onChunk: () => {
+          // We don't update messages during streaming to follow the "append after response" requirement
+        }
+      });
+
+      await saveTwinMessage(localResponse, "Neutral");
+      return { text: localResponse, mood: "Neutral" as const };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const normalizedMessage = errorMessage.toLowerCase();
+      const triedModels = [...attemptedModels, modelToUse];
+
+      if (normalizedMessage.includes("system memory") || normalizedMessage.includes("memory")) {
+        const smallerModel = getSmallerLocalModel(modelToUse);
+        if (smallerModel && !triedModels.includes(smallerModel)) {
+          setLocalAiModel(smallerModel);
+          showToast(`Model ${modelToUse} needs more RAM. Trying ${smallerModel} instead.`, "info");
+          return sendWithLocalAi(text, smallerModel, triedModels);
+        }
+
+        throw new Error("No installed Ollama model fits available system memory. Try a smaller model like phi3 or gemma.");
+      }
+
+      throw error;
+    }
   };
 
   // Socket.io Setup
@@ -695,59 +824,10 @@ export default function Chat() {
       let aiMood = "Neutral";
 
       if (isLocalAiMode) {
-        // Check if Ollama is online
-        if (ollamaStatus !== 'online') {
-          const status = await verifyOllama();
-          if (status !== 'online') {
-            setOllamaStatus('offline');
-            setShowSetupGuide(true);
-            setIsTyping(false);
-            return;
-          }
-          setOllamaStatus('online');
-        }
-
-        // Local AI Mode (Ollama)
-        const localHistory: LocalChatMessage[] = messages.slice(-10).map(m => ({
-          role: m.sender === "user" ? "user" : "assistant",
-          content: m.text
-        }));
-        localHistory.push({ role: "user", content: text });
-
         try {
-          const feedbackContext = messages
-            .filter(m => m.sender === "twin" && m.feedback)
-            .map(m => `- Response: "${m.text.slice(0, 50)}..." was rated ${m.feedback}${m.feedbackCategory ? ` (${m.feedbackCategory})` : ""}`)
-            .join("\n");
-
-          aiText = await streamLocalChat(localHistory, {
-            model: localAiModel,
-            twinProfile,
-            feedbackContext,
-            onChunk: (chunk) => {
-              // We don't update messages during streaming to follow the "append after response" requirement
-            }
-          });
-
-          // After streaming, save to DB
-          const aiMsgResponse = await fetch(`/api/sessions/${currentSessionId}/messages`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${localStorage.getItem("vitra_token")}`
-            },
-            body: JSON.stringify({ 
-              text: aiText, 
-              sender: "twin",
-              moodAtTime: "Neutral"
-            })
-          });
-
-          if (!aiMsgResponse.ok) throw new Error("Failed to save AI response");
-          const aiMsg = await aiMsgResponse.json();
-          
-          // Append the final message
-          setMessages(prev => [...prev, { ...aiMsg, timestamp: new Date(aiMsg.timestamp) }]);
+          const localResponse = await sendWithLocalAi(text);
+          aiText = localResponse.text;
+          aiMood = localResponse.mood;
         } catch (e: any) {
           throw e;
         }
@@ -832,7 +912,18 @@ export default function Chat() {
             setTwinProfile(prev => prev ? { ...prev, ...updatePayload } : null);
           }
         } catch (e: any) {
-          throw e;
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          const isQuotaError = errorMessage.toLowerCase().includes("quota") || errorMessage.toLowerCase().includes("resource_exhausted");
+
+          if (!isQuotaError) {
+            throw e;
+          }
+
+          showToast("Gemini quota reached. Trying Local AI...", "info");
+          const localResponse = await sendWithLocalAi(text);
+          aiText = localResponse.text;
+          aiMood = localResponse.mood;
+          setIsLocalAiMode(true);
         }
       }
 

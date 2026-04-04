@@ -158,15 +158,40 @@ async function startServer() {
       res.end();
     } catch (error: any) {
       console.error('Ollama Error:', error);
-      // If headers already sent, we can't send a 500
+      const details = error?.message || 'Unknown Ollama error';
+      const normalizedDetails = details.toLowerCase();
+
+      let status = 500;
+      let errorMessage = 'Failed to communicate with local AI model';
+      let suggestion = 'Ensure Ollama is running locally on port 11434';
+
+      if (normalizedDetails.includes('not found')) {
+        status = 400;
+        errorMessage = `Local AI model "${model}" is not installed`;
+        suggestion = `Run "ollama pull ${model}" and try again`;
+      } else if (normalizedDetails.includes('system memory') || normalizedDetails.includes('more system memory than is available')) {
+        status = 400;
+        errorMessage = `Local AI model "${model}" requires more memory than is available`;
+        suggestion = 'Choose a smaller Ollama model, or close other apps to free RAM';
+      } else if (
+        normalizedDetails.includes('econnrefused') ||
+        normalizedDetails.includes('connect') ||
+        normalizedDetails.includes('fetch failed') ||
+        normalizedDetails.includes('localhost:11434')
+      ) {
+        status = 503;
+        errorMessage = 'Ollama is not reachable';
+        suggestion = 'Start the Ollama app locally and ensure it is listening on port 11434';
+      }
+
       if (!res.headersSent) {
-        res.status(500).json({ 
-          error: 'Failed to communicate with local AI model',
-          details: error.message,
-          suggestion: 'Ensure Ollama is running locally on port 11434'
+        res.status(status).json({ 
+          error: errorMessage,
+          details,
+          suggestion
         });
       } else {
-        res.write(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: errorMessage, details, suggestion })}\n\n`);
         res.end();
       }
     }
