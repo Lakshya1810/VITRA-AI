@@ -88,6 +88,7 @@ export default function Chat() {
   const [ollamaStatus, setOllamaStatus] = useState<'online' | 'offline' | 'checking'>('checking');
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [setupGuideMode, setSetupGuideMode] = useState<"setup" | "memory">("setup");
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -258,18 +259,21 @@ export default function Chat() {
 
     if (normalizedMessage.includes("not installed")) {
       showToast(`Selected Ollama model is missing. Run ollama pull ${localAiModel}.`, "error");
+      setSetupGuideMode("setup");
       setShowSetupGuide(true);
       return;
     }
 
     if (normalizedMessage.includes("ollama is not reachable") || normalizedMessage.includes("localhost:11434")) {
       showToast("Ollama is offline. Start it locally, then try again.", "error");
+      setSetupGuideMode("setup");
       setShowSetupGuide(true);
       return;
     }
 
     if (normalizedMessage.includes("system memory") || normalizedMessage.includes("memory")) {
       showToast("Selected Ollama model needs more RAM. Trying a smaller model helps.", "error");
+      setSetupGuideMode("memory");
       setShowSetupGuide(true);
       return;
     }
@@ -328,6 +332,7 @@ export default function Chat() {
     const status = await verifyOllama();
     if (status !== "online") {
       setOllamaStatus("offline");
+      setSetupGuideMode("setup");
       setShowSetupGuide(true);
       throw new Error("Ollama is not reachable on localhost:11434");
     }
@@ -1257,9 +1262,12 @@ export default function Chat() {
                           }`}>
                             {ollamaStatus === 'online' ? 'Online' : ollamaStatus === 'offline' ? 'Offline' : 'Checking...'}
                           </span>
-                          {ollamaStatus === 'offline' && (
+                  {ollamaStatus === 'offline' && (
                             <button 
-                              onClick={() => setShowSetupGuide(true)}
+                              onClick={() => {
+                                setSetupGuideMode("setup");
+                                setShowSetupGuide(true);
+                              }}
                               className="p-0.5 hover:bg-white/10 rounded transition-colors text-text/40 hover:text-primary"
                               title="Setup Guide"
                             >
@@ -1920,7 +1928,9 @@ export default function Chat() {
                   <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <Zap size={20} />
                   </div>
-                  <h3 className="text-xl font-bold">Ollama Setup Guide</h3>
+                  <h3 className="text-xl font-bold">
+                    {setupGuideMode === "memory" ? "Local AI Memory Limit" : "Ollama Setup Guide"}
+                  </h3>
                 </div>
                 <button 
                   onClick={() => setShowSetupGuide(false)}
@@ -1931,46 +1941,83 @@ export default function Chat() {
               </div>
 
               <div className="space-y-6">
-                <div className="space-y-3">
-                  <p className="text-sm text-text/60 leading-relaxed">
-                    Local AI mode requires <span className="text-primary font-bold">Ollama</span> to be running on your machine.
-                  </p>
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-text/40">Step 1: Install Ollama</p>
-                    <a 
-                      href="https://ollama.com/download" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-white/90 transition-all"
-                    >
-                      Download Ollama
-                    </a>
-                  </div>
-                </div>
+                {setupGuideMode === "memory" ? (
+                  <>
+                    <div className="space-y-3">
+                      <p className="text-sm text-text/60 leading-relaxed">
+                        <span className="text-primary font-bold">{localAiModel}</span> is installed, but your PC does not have enough free RAM to load it right now.
+                      </p>
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-text/40">What This Means</p>
+                        <p className="text-xs text-text/60 leading-relaxed">
+                          Ollama is running correctly. The blocker is available system memory, not installation or model naming.
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-text/40">Step 2: Pull the Model</p>
-                  <p className="text-xs text-text/60">Run this command in your terminal to download the selected model:</p>
-                  <div className="relative group">
-                    <code className="block p-4 bg-black/40 rounded-2xl border border-white/10 text-xs font-mono text-primary break-all">
-                      ollama pull {localAiModel}
-                    </code>
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(`ollama pull ${localAiModel}`);
-                      }}
-                      className="absolute right-3 top-3 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      title="Copy command"
-                    >
-                      <Check size={14} />
-                    </button>
-                  </div>
-                </div>
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-text/40">Try This</p>
+                      <p className="text-xs text-text/60">Close memory-heavy apps and try again, or install a smaller model such as:</p>
+                      <div className="relative group">
+                        <code className="block p-4 bg-black/40 rounded-2xl border border-white/10 text-xs font-mono text-primary break-all">
+                          ollama pull phi3
+                        </code>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText("ollama pull phi3");
+                          }}
+                          className="absolute right-3 top-3 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="Copy command"
+                        >
+                          <Check size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <p className="text-sm text-text/60 leading-relaxed">
+                        Local AI mode requires <span className="text-primary font-bold">Ollama</span> to be running on your machine.
+                      </p>
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-text/40">Step 1: Install Ollama</p>
+                        <a 
+                          href="https://ollama.com/download" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full py-2.5 bg-white text-black rounded-xl font-bold text-sm hover:bg-white/90 transition-all"
+                        >
+                          Download Ollama
+                        </a>
+                      </div>
+                    </div>
 
-                <div className="space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-text/40">Step 3: Start Ollama</p>
-                  <p className="text-xs text-text/60">Ensure the Ollama application is running. It should be listening on <span className="text-primary">localhost:11434</span>.</p>
-                </div>
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-text/40">Step 2: Pull the Model</p>
+                      <p className="text-xs text-text/60">Run this command in your terminal to download the selected model:</p>
+                      <div className="relative group">
+                        <code className="block p-4 bg-black/40 rounded-2xl border border-white/10 text-xs font-mono text-primary break-all">
+                          ollama pull {localAiModel}
+                        </code>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`ollama pull ${localAiModel}`);
+                          }}
+                          className="absolute right-3 top-3 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="Copy command"
+                        >
+                          <Check size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-text/40">Step 3: Start Ollama</p>
+                      <p className="text-xs text-text/60">Ensure the Ollama application is running. It should be listening on <span className="text-primary">localhost:11434</span>.</p>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button 
