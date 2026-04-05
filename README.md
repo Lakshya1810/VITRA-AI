@@ -1,243 +1,227 @@
-<div align="center">
-  
+# VITRA AI
 
-  # [VITRA AI](https://vitra-ai.vercel.app/)
+VITRA AI is a full-stack digital twin app where users can create a personalized AI profile, chat with it, track daily behavior, store memory, and connect services like Google Calendar and Spotify.
 
-  **A full-stack AI digital twin platform for conversations, behavior tracking, memory, and personalized insights.**
+Live app: `https://vitra-ai.vercel.app/`
 
-  [Live Demo](https://vitra-ai.vercel.app) 
-</div>
+## What The Project Does
 
-## Overview
-VITRA AI is a full-stack application that lets a user create a personal AI digital twin, chat with it, track daily behavior, connect external services, and generate AI-powered insights from memory and activity data.
-
-The project includes:
-- A `React + Vite + TypeScript` frontend
-- An `Express + TypeScript + MongoDB` backend
-- Gemini-powered AI features for chat, recommendations, summaries, and profile enrichment
-- Google authentication and connector flows
-- Spotify and Google Calendar integrations
-
-## Features
-- Secure authentication with email/password and Google sign-in
-- Personalized digital twin setup with tone, personality, goals, and knowledge
-- Real-time style chat experience with persistent sessions
-- Daily behavior tracking for sleep, work, study, mood, and notes
-- AI-generated behavioral insights and recommendations
-- Google Calendar and Spotify connector support
-- Password reset with OTP email flow
-- Production-ready split deployment for frontend and backend
-
-## Live Links
-- Frontend: `https://vitra-ai.vercel.app`
-- Backend: `https://vitra-backend.onrender.com`
-- AI Studio: `https://ai.studio/apps/d7637624-97e4-4c0f-86b9-82e608e5d698`
+- User authentication with email/password and Google sign-in
+- Digital twin setup with personality, tone, knowledge, goals, and avatar data
+- Persistent chat sessions with stored messages and feedback
+- Behavioral tracking for sleep, work, study, mood, and notes
+- AI-powered insights and recommendations
+- Memory storage for conversations and daily logs
+- Google Calendar integration
+- Spotify connection and playback controls
+- Optional local AI chat through Ollama
+- Real-time message events with Socket.IO
 
 ## Tech Stack
-- Frontend: `React 19`, `Vite`, `TypeScript`, `Tailwind CSS`, `React Router`
-- Backend: `Node.js`, `Express`, `TypeScript`, `Socket.IO`
-- Database: `MongoDB`, `Mongoose`
-- AI: `Google Gemini`
-- Auth and Integrations: `Google OAuth`, `Spotify API`, `Nodemailer`
-- Deployment: `Vercel` for frontend, `Render` for backend
+
+- Frontend: React 19, TypeScript, Vite, React Router, Tailwind CSS
+- Backend: Express, TypeScript, Socket.IO
+- Database: MongoDB with Mongoose
+- AI: Google Gemini, optional Ollama for local models
+- Auth and integrations: JWT, Google OAuth, Spotify API, Nodemailer
 
 ## Project Structure
+
 ```text
-VITRA/
-├─ frontend/
-│  ├─ src/
-│  │  ├─ components/        # Reusable UI pieces like calendar, Spotify, tutorial, error boundary
-│  │  ├─ context/           # Auth, tutorial, and toast providers
-│  │  ├─ pages/             # Landing, login, register, setup, chat, dashboard, insights, tracker
-│  │  ├─ services/          # Gemini and local AI service clients
-│  │  ├─ App.tsx            # App routes and providers
-│  │  ├─ constants.ts       # Frontend environment-backed constants
-│  │  └─ main.tsx           # React entry point
-│  ├─ .env.example          # Frontend environment template
-│  ├─ index.html
-│  ├─ package.json
-│  └─ vite.config.ts
-├─ server/
-│  ├─ config/               # Database config
-│  ├─ controllers/          # Route controller logic
-│  ├─ middleware/           # Auth and DB middleware
-│  ├─ models/               # Mongoose models
-│  ├─ routes/               # Express route definitions
-│  ├─ services/             # Connector-related service logic
-│  ├─ package.json
-│  └─ server.ts             # Express app entry point
-├─ .env.example             # Root/backend environment template
-├─ .env.local               # Local development environment file
-├─ package.json             # Root scripts for running frontend + backend together
-└─ README.md
+VITRA-AI/
+|-- src/                     # React app
+|   |-- components/          # Reusable UI pieces
+|   |-- context/             # Auth, tutorial, toast providers
+|   |-- pages/               # Landing, login, register, chat, dashboard, tracker, insights
+|   |-- services/            # Gemini and local AI client logic
+|   |-- App.tsx              # Routes and app providers
+|   |-- constants.ts         # Frontend constants
+|   `-- main.tsx             # React entry
+|-- server/                  # Express API modules
+|   |-- config/              # MongoDB connection
+|   |-- controllers/         # Auth, twins, sessions, messages, memory, connectors
+|   |-- middleware/          # Auth and DB guards
+|   |-- models/              # Mongoose models
+|   |-- routes/              # API route definitions
+|   `-- services/            # Connector helpers
+|-- server.ts                # Main full-stack server entrypoint
+|-- .env.example             # Environment template
+|-- .env.local               # Local env file used by the server
+|-- package.json             # Scripts and dependencies
+|-- vite.config.ts
+`-- README.md
 ```
 
-## Important Files
-- [package.json](/abs/path/c:/Users/sanke/Downloads/VITRA/package.json): root scripts for local development
-- [frontend/package.json](/abs/path/c:/Users/sanke/Downloads/VITRA/frontend/package.json): frontend dependencies and build scripts
-- [server/package.json](/abs/path/c:/Users/sanke/Downloads/VITRA/server/package.json): backend runtime and dev scripts
-- [frontend/src/constants.ts](/abs/path/c:/Users/sanke/Downloads/VITRA/frontend/src/constants.ts): API base URL and frontend constants
-- [frontend/src/context/AuthContext.tsx](/abs/path/c:/Users/sanke/Downloads/VITRA/frontend/src/context/AuthContext.tsx): auth flow and token handling
-- [server/server.ts](/abs/path/c:/Users/sanke/Downloads/VITRA/server/server.ts): backend server bootstrap and route mounting
-- [server/controllers/authController.ts](/abs/path/c:/Users/sanke/Downloads/VITRA/server/controllers/authController.ts): login, register, Google auth, password reset
+## How It Runs
 
-## Local Development
+This project currently runs as a single Node process:
+
+- `server.ts` starts the Express server on port `3000`
+- In development, Vite is mounted in middleware mode and serves the React app
+- In production, Express serves the built files from `dist/`
+
+That means local development uses one command and one port instead of separate frontend/backend servers.
+
+## Main Routes And Features
+
+Frontend pages include:
+
+- `/` landing page
+- `/login`, `/register`
+- `/forgot-password`, `/reset-password`
+- `/dashboard`
+- `/setup`
+- `/chat`
+- `/tracker`
+- `/insights`
+
+Backend API areas include:
+
+- `/api/auth` for register, login, Google auth, password reset, current user
+- `/api/twins` for twin profile, system prompt generation, feedback
+- `/api/sessions` for chat sessions and messages
+- `/api/daily-data` for behavioral logs
+- `/api/memory` for stored memory data
+- `/api/connect` for Google Calendar and Spotify flows
+- `/api/chat/local` for Ollama-backed local chat
+- `/api/insights/analyze` for lightweight non-Gemini analysis
+- `/api/health` for server health status
+
+## Getting Started
+
 ### Prerequisites
-- `Node.js 18+`
-- `npm`
-- `MongoDB Atlas` connection string or a MongoDB instance
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/designersanket/VITRA-AI.git
-cd VITRA-AI
-```
+- Node.js 18+
+- npm
+- MongoDB connection string
 
-### 2. Install dependencies
+Optional:
+
+- Gemini API key for cloud AI features
+- Google OAuth credentials
+- Spotify app credentials
+- Gmail app password for reset emails
+- Ollama installed locally if you want local model chat
+
+### Install
+
 ```bash
 npm install
-npm run install:all
 ```
 
-### 3. Configure environment variables
-Create your local environment file at the project root:
+### Configure Environment
+
+Copy `.env.example` to `.env.local` and fill in your values.
 
 ```bash
 cp .env.example .env.local
 ```
 
-Set the required values in `.env.local`.
+Required or commonly used variables:
 
-Example:
 ```env
 MONGODB_URI=your_mongodb_uri
 JWT_SECRET=your_jwt_secret
 GEMINI_API_KEY=your_gemini_api_key
 GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
-APP_URL=http://localhost:5173
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_app_password
-EMAIL_FROM="VITRA Support <your_email@gmail.com>"
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-```
-
-For the frontend, also ensure:
-
-```env
-VITE_API_URL=http://localhost:3000
-```
-
-You can place that in `frontend/.env` or in your frontend deployment environment.
-
-### 4. Start the app
-```bash
-npm run dev
-```
-
-This runs:
-- Frontend on `http://localhost:5173`
-- Backend on `http://localhost:3000`
-
-## Available Scripts
-From the project root:
-
-```bash
-npm run dev
-npm run install:all
-npm run build
-npm run start
-```
-
-From `frontend/`:
-
-```bash
-npm run dev
-npm run build
-npm run preview
-```
-
-From `server/`:
-
-```bash
-npm run dev
-npm run start
-```
-
-## Environment Variables
-### Root / Backend
-- `MONGODB_URI`
-- `JWT_SECRET`
-- `GEMINI_API_KEY`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `APP_URL`
-- `EMAIL_SERVICE`
-- `EMAIL_USER`
-- `EMAIL_PASS`
-- `EMAIL_FROM`
-- `SPOTIFY_CLIENT_ID`
-- `SPOTIFY_CLIENT_SECRET`
-
-### Frontend
-- `VITE_API_URL`
-- `VITE_GOOGLE_CLIENT_ID`
-- `VITE_GEMINI_API_KEY` if you are using Gemini directly from the frontend
-
-## Production Deployment
-### Frontend on Vercel
-Use these settings:
-- Root Directory: `frontend`
-- Build Command: `npm run build`
-- Output Directory: `dist`
-
-Frontend environment variables:
-```env
-VITE_API_URL=https://vitra-backend.onrender.com
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-```
-
-### Backend on Render
-Backend environment variables:
-```env
-APP_URL=https://vitra-ai.vercel.app
-MONGODB_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
-GEMINI_API_KEY=your_gemini_api_key
-GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+APP_URL=http://localhost:3000
+EMAIL_SERVICE=gmail
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password
 EMAIL_FROM="VITRA Support <your_email@gmail.com>"
 ```
 
-## Google OAuth Setup
-### Authorized JavaScript origins
-- `http://localhost:5173`
-- `http://localhost`
-- `https://vitra-ai.vercel.app`
+Notes:
 
-### Authorized redirect URIs
-- `http://localhost:5173`
-- `http://localhost:5173/login`
-- `https://vitra-ai.vercel.app/login`
-- `https://vitra-backend.onrender.com/api/connect/google/callback`
+- `server.ts` loads `.env.local` first, then falls back to normal environment variables
+- The frontend uses same-origin API calls, so there is no `VITE_API_URL` requirement in the current setup
+- Google sign-in on the client uses `VITE_GOOGLE_CLIENT_ID`
+- If MongoDB is not reachable, the UI shows a database warning banner
 
-## Notes
-- The frontend uses `VITE_API_URL` in production to reach the backend API.
-- If you see JSON parsing errors during login, the frontend is usually pointing at the wrong server.
-- Render cold starts may briefly return a warm-up response before the backend is fully ready.
+### Run In Development
 
-## Roadmap Ideas
-- Better code splitting for smaller frontend bundles
-- Cleaner monorepo deployment configuration
-- Automated tests for auth and API flows
-- Improved connector status UX and retry handling
-- Richer memory analytics and export tools
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`
+
+## Scripts
+
+```bash
+npm run dev      # Start the full-stack app with tsx
+npm run start    # Start the same server entrypoint
+npm run build    # Build the frontend to dist/
+npm run preview  # Preview the Vite frontend only
+npm run lint     # Type-check the project
+```
+
+`npm run preview` is useful for checking the built frontend, but it does not replace the Express API server.
+
+## AI Modes
+
+### Gemini
+
+Gemini powers features like:
+
+- twin chat responses
+- recommendations
+- mood prediction
+- avatar generation
+- text-to-speech
+- quick suggestions
+- trait extraction and memory summarization
+
+These features require `GEMINI_API_KEY`.
+
+### Local AI With Ollama
+
+The app also supports local chat through Ollama:
+
+- `GET /api/chat/local/models`
+- `POST /api/chat/local`
+
+If Ollama is not running on `localhost:11434`, the server returns a helpful error with a suggestion.
+
+## Integrations
+
+### Google OAuth / Calendar
+
+Used for:
+
+- Google sign-in
+- Google Calendar connector flow
+
+Make sure your Google Cloud app includes the correct authorized origins and redirect URIs for your deployment.
+
+### Spotify
+
+Used for:
+
+- Spotify account connection
+- playback status
+- playback control actions from the app
+
+## Deployment Notes
+
+Current production links in the project:
+
+- Frontend: `https://vitra-ai.vercel.app/`
+- Backend/API: `https://vitra-backend.onrender.com`
+
+The local repository is structured as a single app, but the deployed version may still use a split frontend/backend setup. If you deploy it yourself, keep environment variables and OAuth redirect URLs aligned with your chosen architecture.
+
+## Known Implementation Notes
+
+- The server currently uses port `3000` directly inside [`server.ts`](/f:/VITRA/VITRA-AI/server.ts)
+- Same-origin API requests are configured in [`src/constants.ts`](/f:/VITRA/VITRA-AI/src/constants.ts)
+- Auth state and DB health handling live in [`src/context/AuthContext.tsx`](/f:/VITRA/VITRA-AI/src/context/AuthContext.tsx)
+- The frontend route tree is defined in [`src/App.tsx`](/f:/VITRA/VITRA-AI/src/App.tsx)
 
 ## License
-This project is currently unlicensed. Add a license before public distribution if needed.
+
+No license is currently defined in this repository.
